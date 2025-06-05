@@ -107,7 +107,3 @@ Troubleshooting
 - Permissions: Run the script with appropriate permissions to access process information.
 - Telegram Bot Errors: The bot automatically retries on errors after 30 seconds.
 - Process Names: Make sure the process names in tracked_games exactly match the executable names on your system.
-
- License
-
-This project is provided as-is without warranty. Feel free to modify and use it for personal purposes.
