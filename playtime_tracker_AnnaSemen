@@ -95,3 +95,55 @@ def handle_start(message):
         "Я буду уведомлять тебя, когда игра начнётся и когда закончится."
     )
     bot.reply_to(message, welcome_msg)
+
+
+@bot.message_handler(commands=['status'])
+def handle_status(message):
+    with thread_lock:
+        if not active_sessions:
+            bot.reply_to(message, "Сейчас ни одной игры не запущено.")
+            return
+        status_msg = "Активные игры:\n\n"
+        now = datetime.now()
+        for game, start_time in active_sessions.items():
+            duration = seconds_to_hms((now - start_time).total_seconds())
+            status_msg += (f"{game}\n"
+                           f"  Запущена в: {start_time.strftime('%H:%M:%S')}\n"
+                           f"  Время сессии: {duration}\n\n")
+    bot.reply_to(message, status_msg)
+
+@bot.message_handler(commands=['stats'])
+def handle_stats(message):
+    bot.reply_to(message, compose_statistics())
+
+@bot.message_handler(commands=['help'])
+def handle_help(message):
+    help_text = (
+        "Команды:\n"
+        "/start - приветствие\n"
+        "/status - активные игры\n"
+        "/stats - статистика\n"
+        "/help - помощь\n\n"
+        "Отслеживаем игры:\n" + "\n".join(f"- {game}" for game in tracked_games)
+    )
+    bot.reply_to(message, help_text)
+
+def run_bot():
+    while True:
+        try:
+            bot.polling(none_stop=True)
+        except Exception as e:
+            print(f"Ошибка бота, перезапуск через 30 секунд: {e}")
+            time.sleep(30)
+
+if __name__ == "__main__":
+    print("Запускаем мониторинг игр и Telegram-бота...")
+    threading.Thread(target=monitor_processes, daemon=True).start()
+    threading.Thread(target=run_bot, daemon=True).start()
+
+    print("Для выхода введите 'exit'")
+    while True:
+        if input().strip().lower() == 'exit':
+            print("Выход из программы...")
+            break
+
