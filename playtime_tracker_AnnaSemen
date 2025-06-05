@@ -1,0 +1,97 @@
+import time
+import psutil
+from datetime import datetime
+import threading
+import telebot
+import os
+from dotenv import load_dotenv
+
+# Загружаем настройки из файла .env
+load_dotenv()
+TOKEN = os.getenv('BOT_TOKEN')
+TARGET_CHAT = os.getenv('CHAT_ID')
+
+bot = telebot.TeleBot(TOKEN)
+
+# Игры, которые будем отслеживать
+tracked_games = ['game.exe', 'steam.exe', 'minecraft.exe']
+
+# Для синхронизации доступа к данным
+thread_lock = threading.Lock()
+active_sessions = {}
+accumulated_times = {}
+
+def send_telegram_message(text):
+    if TARGET_CHAT:
+        try:
+            bot.send_message(TARGET_CHAT, text)
+        except Exception as error:
+            print(f"Ошибка при отправке сообщения: {error}")
+
+def seconds_to_hms(seconds):
+    hrs = seconds // 3600
+    mins = (seconds % 3600) // 60
+    secs = seconds % 60
+    return f"{int(hrs):02d}:{int(mins):02d}:{int(secs):02d}"
+
+def monitor_processes():
+    while True:
+        try:
+            running_games = set()
+            for process in psutil.process_iter(['name']):
+                proc_name = process.info['name']
+                if proc_name in tracked_games:
+                    running_games.add(proc_name)
+                    with thread_lock:
+                        if proc_name not in active_sessions:
+                            active_sessions[proc_name] = datetime.now()
+                            msg = f"🎮 Запустилась игра: {proc_name} в {active_sessions[proc_name].strftime('%H:%M:%S')}"
+                            print(msg)
+                            send_telegram_message(msg)
+
+            with thread_lock:
+                ended_games = set(active_sessions.keys()) - running_games
+                for game in ended_games:
+                    end_time = datetime.now()
+                    session_duration = (end_time - active_sessions[game]).total_seconds()
+                    accumulated_times[game] = accumulated_times.get(game, 0) + session_duration
+                    msg = (f"⏹️ Игра {game} завершена в {end_time.strftime('%H:%M:%S')}\n"
+                           f"Время сессии: {seconds_to_hms(session_duration)}")
+                    print(msg)
+                    send_telegram_message(msg)
+                    del active_sessions[game]
+
+            time.sleep(5)
+        except Exception as ex:
+            print(f"Ошибка мониторинга процессов: {ex}")
+            time.sleep(10)
+
+def compose_statistics():
+    with thread_lock:
+        if not accumulated_times and not active_sessions:
+            return "Статистика пока пустая -_- Игры не запускались! Ура."
+        result = "📊 Статистика игрового времени:\n\n"
+        if accumulated_times:
+            result += "Завершённые игровые сессии:\n"
+            for game, total_sec in accumulated_times.items():
+                result += f"• {game}: {seconds_to_hms(total_sec)}\n"
+        if active_sessions:
+            result += "\nСейчас играют:\n"
+            now = datetime.now()
+            for game, start_time in active_sessions.items():
+                elapsed = (now - start_time).total_seconds()
+                result += f"• {game}: {seconds_to_hms(elapsed)} (активна)\n"
+        return result
+
+@bot.message_handler(commands=['start'])
+def handle_start(message):
+    welcome_msg = (
+        "Играешь??? Ха-ха-ха-ха, иди потрогай траву... .\n\n"
+        "Ладно, давай пообщаемся, милый uwu:\n"
+        "/start - показать это сообщение\n"
+        "/status - показать текущие игры\n"
+        "/stats - показать всю статистику\n"
+        "/help - помощь по командам\n\n"
+        "Я буду уведомлять тебя, когда игра начнётся и когда закончится."
+    )
+    bot.reply_to(message, welcome_msg)
