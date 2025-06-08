@@ -1,0 +1,2 @@
+TOKEN = os.getenv('')
+TARGET_CHAT = os.getenv('')
