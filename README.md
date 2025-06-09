@@ -1,109 +1,114 @@
-Game Time Tracker Telegram Bot
+playtime_tracker_AnnaSemen
 
-This Python application monitors specified game processes on your computer, tracks the time spent playing each game, and sends notifications and statistics via a Telegram bot. It provides real-time updates when games start and stop, and allows you to query current sessions and accumulated playtime through Telegram commands.
+A Telegram bot for monitoring and tracking game sessions on your PC.
 
 
+Table of Contents
+
+- Features
+- Prerequisites
+- Installation
+- Configuration
+- Usage
+- Bot Commands
+- Contributing
+- License
 
 Features
 
-- Process Monitoring: Tracks specified game executables running on your system.
-- Session Tracking: Records start and end times of game sessions.
-- Accumulated Playtime: Maintains total playtime for each tracked game.
-- Telegram Notifications: Sends messages to a Telegram chat when games start and stop.
-- Telegram Commands: Supports commands to check current active games, view statistics, and get help.
-- Thread-Safe: Uses threading and locks to safely manage shared data.
-- Automatic Bot Restart: Handles Telegram bot errors and restarts polling automatically.
+- Monitors selected game processes in real time (e.g., `steam.exe`, `minecraft.exe`)
+- Sends Telegram notifications when games start and stop
+- Tracks and accumulates total playtime for each game
+- Provides commands for checking active sessions and overall statistics
+- Runs monitoring and Telegram bot concurrently using multithreading
 
----
+Prerequisites
 
-Supported Games
+Before you begin, ensure you have met the following requirements:
 
-By default, the bot tracks the following game executables (you can modify this list in the code):
+- Python 3.9 or higher installed on your system ([Download Python](https://www.python.org/downloads/))
+- Telegram account (to interact with the bot)
+- Access to create a Telegram bot via [BotFather](https://t.me/BotFather)
+- Your Telegram chat ID (for receiving notifications)
 
-- game.exe
-- steam.exe
-- minecraft.exe
+Installation
 
----
+1. Clone the repository or download the source code
 
-Requirements
+    ```bash
+    git clone https://github.com/z1nek/playtime_tracker_AnnaSemen.git
+    cd playtime_tracker_AnnaSemen
+    ```
 
-- Python 3.7+
-- psutil — for process monitoring
-- pyTelegramBotAPI (also known as telebot) — for Telegram bot interaction
-- python-dotenv — for loading environment variables from .env
+2. Create and activate a virtual environment:
 
-Install dependencies via pip:
+    ```bash
+    python -m venv venv
+    # On Windows
+    .\venv\Scripts\Activate
+    # On macOS/Linux
+    source venv/bin/activate
+    ```
 
-pip install psutil pyTelegramBotAPI python-dotenv
+3. Install the required dependencies:
 
----
-
-Setup
-
-1. Create a Telegram Bot:
-
-   - Talk to [@BotFather](https://t.me/BotFather) on Telegram.
-   - Use /newbot to create a bot and get the bot token.
-
-2. Get Your Chat ID:
-
-   - Start a chat with your bot.
-   - Use tools like [@userinfobot](https://t.me/userinfobot) or send a message to the bot and check updates via Telegram API to find your chat ID.
-
-3. Create a .env file in the project directory with the following content:
-
-   
-   BOT_TOKEN=your_telegram_bot_token_here
-   CHAT_ID=your_telegram_chat_id_here
-   
-
----
-
-## Usage
-
-Run the script:
-
-python your_script_name.py
-
-The program will:
-
-- Start monitoring the specified game processes.
-- Launch the Telegram bot to interact with you.
-
-You can type exit in the console to stop the program gracefully.
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 
+Configuration
 
-Telegram Bot Commands
+1. Create a `.env` file** in the project root directory with the following content:
 
-- /start — Display a welcome message and basic instructions.
-- /status — Show currently active game sessions with start times and elapsed durations.
-- /stats — Show accumulated playtime statistics for all tracked games, including ongoing sessions.
-- /help — Show available commands and the list of tracked games.
+    ```
+    BOT_TOKEN= your_telegram_bot_token
+    CHAT_ID= your_telegram_chat_id
+    ```
 
+    - `BOT_TOKEN` — Token you get from [BotFather](https://t.me/BotFather).
+    - `CHAT_ID` — Your Telegram chat ID (can be obtained by messaging your bot and checking updates via Telegram API).
 
+2. *(Optional)* Adjust the list of tracked games in `main.py` by editing the `tracked_games` list:
 
-How It Works
-
-- The script continuously scans running processes every 5 seconds.
-- When a tracked game starts, it records the start time and sends a Telegram notification.
-- When a tracked game stops, it calculates the session duration, updates total playtime, and sends a notification.
-- The Telegram bot runs concurrently, responding to user commands.
-- Thread locks ensure safe access to shared session data.
-
-
-
-Customization
-
-- Tracked Games: Modify the tracked_games list in the script to add or remove games by their process executable names.
-- Polling Interval: Adjust the time.sleep(5) in monitor_processes() to change how often the script checks running processes.
-- Messages: Customize notification and reply messages in the code to your preferred language or style.
+    ```python
+    tracked_games = ['game.exe', 'steam.exe', 'minecraft.exe']
+    ```
 
 
-Troubleshooting
+Usage
 
-- Bot Token or Chat ID Missing: Ensure your .env file is correctly set up and loaded.
-- Permissions: Run the script with appropriate permissions to access process information.
-- Telegram Bot Errors: The bot automatically retries on errors after 30 seconds.
-- Process Names: Make sure the process names in tracked_games exactly match the executable names on your system.
+1. Run the bot:
+
+    ```bash
+    python main.py
+    ```
+
+2. Interact with your bot in Telegram:
+    - Send `/start` to receive a welcome message and see available commands.
+    - The bot will notify you when a tracked game starts or stops.
+    - Use commands to check your gaming statistics.
+
+Bot Commands
+
+- `/start` — Show welcome message and available commands
+- `/status` — Show currently active games and session durations
+- `/stats` — Show accumulated gaming statistics
+- `/help` — Show help message with commands and tracked games
+
+Contributing
+
+Contributions are welcome!  
+To contribute:
+
+1. Fork the repository
+2. Create a new branch (`git checkout -b feature/YourFeature`)
+3. Commit your changes
+4. Push to the branch (`git push origin feature/YourFeature`)
+5. Create a Pull Request
+
+Please follow [PEP8](https://pep8.org/) style guidelines and document your code.
+
+License
+
+This project is licensed under the MIT License.
