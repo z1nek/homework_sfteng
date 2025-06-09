@@ -1,0 +1,14 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Telegram
+BOT_TOKEN = os.getenv('BOT_TOKEN')
+CHAT_ID = os.getenv('CHAT_ID')
+
+# Список игр для отслеживания
+TRACKED_GAMES = ['steam.exe', 'minecraft.exe']
+
+# Лимит игрового времени в секундах 
+PLAYTIME_LIMIT = 60
