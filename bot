@@ -1,0 +1,87 @@
+from datetime import datetime
+import time
+import telebot
+from config import BOT_TOKEN, CHAT_ID, TRACKED_GAMES
+from monitor import active_sessions, accumulated_times, thread_lock, seconds_to_hms
+from logger import logger
+from monitor import seconds_to_hms
+
+
+
+bot = telebot.TeleBot(BOT_TOKEN)
+
+def send_telegram_message(text):
+    if CHAT_ID:
+        try:
+            bot.send_message(CHAT_ID, text)
+        except Exception as e:
+            logger.error(f"Error sending message: {e}")
+
+@bot.message_handler(commands=['start'])
+def handle_start(message):
+    welcome_msg = (
+        "Welcome! I monitor your game sessions.\n\n"
+        "Commands:\n"
+        "/start - this message\n"
+        "/status - current active games\n"
+        "/stats - game time statistics\n"
+        "/help - help info"
+    )
+    bot.reply_to(message, welcome_msg)
+
+@bot.message_handler(commands=['status'])
+def handle_status(message):
+    with thread_lock:
+        if not active_sessions:
+            bot.reply_to(message, "No active games right now.")
+            return
+        status_msg = "Active games:\n"
+        now = datetime.now()
+        for game, start_time in active_sessions.items():
+            elapsed = (now - start_time).total_seconds()
+            status_msg += f"{game} - started at {start_time.strftime('%H:%M:%S')}, duration {seconds_to_hms(elapsed)}\n"
+    bot.reply_to(message, status_msg)
+
+@bot.message_handler(commands=['stats'])
+def handle_stats(message):
+    with thread_lock:
+        if not accumulated_times:
+            bot.reply_to(message, "No game statistics yet.")
+            return
+        stats_msg = "Game time statistics:\n"
+        for game, total_sec in accumulated_times.items():
+            stats_msg += f"{game}: {seconds_to_hms(total_sec)}\n"
+    bot.reply_to(message, stats_msg)
+
+@bot.message_handler(commands=['help'])
+def handle_help(message):
+    help_text = (
+        "Commands:\n"
+        "/start - welcome message\n"
+        "/status - show active games\n"
+        "/stats - show statistics\n"
+        "/help - this help\n\n"
+        "Tracked games:\n" + "\n".join(f"- {g}" for g in TRACKED_GAMES)
+    )
+    bot.reply_to(message, help_text)
+
+def run_bot():
+    while True:
+        try:
+            bot.polling(none_stop=True)
+        except Exception as e:
+            logger.error(f"Error, restarting in 30 seconds...")
+            time.sleep(30)
+from monitor import accumulated_times, thread_lock, seconds_to_hms
+from config import TRACKED_GAMES
+
+@bot.message_handler(commands=['stats'])
+def handle_stats(message):
+    with thread_lock:
+        if not accumulated_times:
+            bot.reply_to(message, "No game statistics yet.")
+            return
+        stats_msg = "Game time statistics:\n"
+        for game, total_sec in accumulated_times.items():
+            stats_msg += f"{game}: {seconds_to_hms(total_sec)}\n"
+    bot.reply_to(message, stats_msg)
