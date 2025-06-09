@@ -1,0 +1,87 @@
+import psutil
+from datetime import datetime
+import threading
+import time
+from config import TRACKED_GAMES, PLAYTIME_LIMIT
+from logger import logger
+
+thread_lock = threading.Lock()
+active_sessions = {}
+accumulated_times = {}
+
+# Время последнего отправленного предупреждения для каждой игры
+last_warning_time = {}
+
+# Минимальный интервал между предупреждениями (секунды)
+WARNING_INTERVAL = 60  # 1 минута
+
+# Время до лимита, когда отправляется предупреждение (секунды)
+WARNING_BEFORE_LIMIT = 20  
+
+# Флаги, чтобы не спамить предупреждения о приближении лимита
+warning_sent = {}
+
+def monitor_processes(send_message_func):
+    while True:
+        try:
+            running_games = set()
+            for process in psutil.process_iter(['name']):
+                proc_name = process.info['name']
+                if proc_name in TRACKED_GAMES:
+                    running_games.add(proc_name)
+                    with thread_lock:
+                        if proc_name not in active_sessions:
+                            active_sessions[proc_name] = datetime.now()
+                            msg = f"Game started: {proc_name} at {active_sessions[proc_name].strftime('%H:%M:%S')}"
+                            logger.info(msg)
+                            send_message_func(msg)
+
+            with thread_lock:
+                ended_games = set(active_sessions.keys()) - running_games
+                for game in ended_games:
+                    end_time = datetime.now()
+                    session_duration = (end_time - active_sessions[game]).total_seconds()
+                    accumulated_times[game] = accumulated_times.get(game, 0) + session_duration
+                    msg = (f"Game {game} ended at {end_time.strftime('%H:%M:%S')}\n"
+                           f"Session duration: {seconds_to_hms(session_duration)}")
+                    logger.info(msg)
+                    send_message_func(msg)
+                    # Сброс флагов предупреждений для этой игры
+                    warning_sent.pop(game, None)
+                    last_warning_time.pop(game, None)
+                    del active_sessions[game]
+
+            with thread_lock:
+                for game, total_time in accumulated_times.items():
+                    time_left = PLAYTIME_LIMIT - total_time
+                    now = time.time()
+                    last_time = last_warning_time.get(game, 0)
+
+                    # Предупреждение о приближении лимита
+                    if 0 < time_left <= WARNING_BEFORE_LIMIT:
+                        if not warning_sent.get(game, False):
+                            if now - last_time > WARNING_INTERVAL:
+                                if time_left >= 60:
+                                    time_left_str = f"{int(time_left // 60)} минут"
+                                else:
+                                    time_left_str = f"{int(time_left)} секунд"
+                                send_message_func(f"Осталось всего {time_left_str} игры в {game}! Поторопись!")
+                                last_warning_time[game] = now
+                                warning_sent[game] = True
+
+                    # Предупреждение о превышении лимита
+                    elif total_time > PLAYTIME_LIMIT:
+                        if now - last_time > WARNING_INTERVAL:
+                            send_message_func(f"Время игры в {game} превышено! Пожалуйста, сделайте перерыв.")
+                            last_warning_time[game] = now
+
+            time.sleep(1)  # уменьшенный интервал для более частой проверки
+        except Exception as e:
+            logger.error(f"Error in monitor_processes: {e}")
+            time.sleep(10)
+
+def seconds_to_hms(seconds):
+    hrs = int(seconds // 3600)
+    mins = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+    return f"{hrs:02d}:{mins:02d}:{secs:02d}"
